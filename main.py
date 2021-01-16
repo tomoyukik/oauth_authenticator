@@ -10,6 +10,7 @@ def get_access_token(init=False):
     # OAuth2認証でアクセストークンを取得する
     print('call token handler')
     token_handler = MauticAccessTokenHandler(client_id, client_secret)
+    print('token_hander created')
     return token_handler.get_access_token()
 
 # %%
