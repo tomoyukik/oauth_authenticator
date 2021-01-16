@@ -36,9 +36,11 @@ class AuthenticationHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         print('do_GET called!!')
         print(self.path)
+        query = urllib.parse.urlparse(self.path).query
+        params = urllib.parse.parse_qs(query)
+        print(params['code'][0], params['state'][0])
 
-        self.send_response(200)
-        self.end_headers()
+        self.__responde()
 
         if 'code' in self.path:
             self.server.access_token = None
@@ -46,8 +48,6 @@ class AuthenticationHandler(BaseHTTPRequestHandler):
             response = self._send_post_request()
             print('response_status code:', response.status_code)
             print('response content:', response.content)
-
-
             if response.status_code == 200:
                 print('response json:', response.json)
                 self.server.access_token = response.json()['access_token']
@@ -57,6 +57,15 @@ class AuthenticationHandler(BaseHTTPRequestHandler):
             
         self.wfile.write(bytes('gomengo', 'utf-8'))
         return
+
+    def __responde(self):
+        self.send_response(200)
+        self.end_headers()
+
+    def _join_url(self, base_url, sub_directory, params):
+        params_joined = '&'.join(['='.join(p) for p in params.items()])
+        joined_url = ''.join([base_url, sub_directory])
+        return '?'.join([joined_url, params_joined])
 
     def _send_post_request(self):
         params = self.path.split('&')
@@ -74,7 +83,6 @@ class AuthenticationHandler(BaseHTTPRequestHandler):
         }
         response = requests.post(access_url, data=params, verify=False)
         return response
-
 
 class AccessTokenHandler:
 
@@ -125,6 +133,7 @@ class AccessTokenHandler:
         print('Server Stops - %s:%s' % (host, port))
         return token
 
+
     def _randomname(self, n):
         randlst = [random.choice(string.ascii_letters + string.digits) for i in range(n)]
         return ''.join(randlst)
@@ -133,59 +142,6 @@ class AccessTokenHandler:
         params_joined = '&'.join(['='.join(p) for p in params.items()])
         joined_url = ''.join([base_url, sub_directory])
         return '?'.join([joined_url, params_joined])
-
-
-def randomname(n):
-    randlst = [random.choice(string.ascii_letters + string.digits) for i in range(n)]
-    return ''.join(randlst)
-
-def join_url(base_url, sub_directory, params):
-    params_joined = '&'.join(['='.join(p) for p in params.items()])
-    joined_url = ''.join([base_url, sub_directory])
-    return '?'.join([joined_url, params_joined])
-
-
-def get_access_token():
-    host = '0.0.0.0'
-    port = 8888
-    grant_type = 'authorization_code'
-    app_url = 'https://0.0.0.0:8888'
-    response_type = 'code'
-    authorize_path = '/oauth/v2/authorize'
-
-    handler = lambda request, address, server: AuthenticationHandler(
-        request, address, server, CLIENT_ID, CLIENT_SECRET
-    )
-
-    context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    context.load_cert_chain('./ssl_test.crt', keyfile='./ssl_test.key')
-    context.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
-
-    params = {
-        'client_id': CLIENT_ID,
-        'grant_type': grant_type,
-        'redirect_uri': urllib.parse.quote(app_url, safe=''),
-        'response_type': response_type,
-        'state': randomname(40)
-    }
-    access_url = join_url(MAUTIC_API_BASE_URL, authorize_path, params)
-    open_new(access_url)
-
-    # クライアントサーバ起動
-    token = None
-    with HTTPServer((host, port), handler) as server:
-        server.socket = context.wrap_socket(server.socket)
-        print('Server Starts - %s:%s' % (host, port))
-        try:
-            while token is None:
-                server.access_token = None
-                server.handle_request()
-                token = server.access_token
-        except KeyboardInterrupt:
-            pass
-
-    print('アクセストークン取れたよー', token)
-    print('Server Stops - %s:%s' % (host, port))
 
 # mauticにアクセス(GET リクエスト)
 # サーバ起動
