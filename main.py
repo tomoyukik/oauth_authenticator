@@ -1,21 +1,17 @@
-# %%
-import os
-from mautic_api_auth import MauticAccessTokenHandler
-# %%
+from ssl_server_sample import OAuthAuthenticator
 
-def get_access_token(init=False):
-    client_id = '1_5j8ecbsu9cowo4wk8kwwcc8k8wc08c8o4sgo4s084cg880ggo0'
-    client_secret = '172h8p6mevy8w8cggc44gw4w4ookk4ockg440osggkw808c00g'
+AUTHORIZATION_URL = 'https://0.0.0.0/oauth/v2/'
+CLIENT_ID = '1_5j8ecbsu9cowo4wk8kwwcc8k8wc08c8o4sgo4s084cg880ggo0'
+CLIENT_SECRET = '172h8p6mevy8w8cggc44gw4w4ookk4ockg440osggkw808c00g'
+APP_URI = 'https://0.0.0.0:8888'
+APP_HOST = '0.0.0.0'
+APP_PORT = 8888
 
-    # OAuth2認証でアクセストークンを取得する
-    print('call token handler')
-    token_handler = MauticAccessTokenHandler(client_id, client_secret)
-    print('token_hander created')
-    return token_handler.get_access_token()
-
-# %%
 if __name__ == '__main__':
-    print('トークンとるよー')
-    access_token = get_access_token()
-    print(f'アクセストークンとれたよー: {access_token}')
-# %%
+    client_info = (APP_HOST, APP_PORT)
+    handler = OAuthAuthenticator(
+        {'id': CLIENT_ID, 'secret': CLIENT_SECRET},
+        AUTHORIZATION_URL,
+        APP_URI
+    )
+    print('だから取れたぞー', handler.get_access_token())
