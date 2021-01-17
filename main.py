@@ -1,4 +1,4 @@
-from ssl_server_sample import OAuthAuthenticator
+from oauth_authenticator import OAuthAuthenticator
 
 AUTHORIZATION_URL = 'https://0.0.0.0/oauth/v2/'
 CLIENT_ID = '1_5j8ecbsu9cowo4wk8kwwcc8k8wc08c8o4sgo4s084cg880ggo0'
@@ -9,9 +9,10 @@ APP_PORT = 8888
 
 if __name__ == '__main__':
     client_info = (APP_HOST, APP_PORT)
-    handler = OAuthAuthenticator(
+    authenticator = OAuthAuthenticator(
         {'id': CLIENT_ID, 'secret': CLIENT_SECRET},
-        AUTHORIZATION_URL,
-        APP_URI
+        {'host': '0.0.0.0', 'port': 8888},
+        AUTHORIZATION_URL
     )
-    print('だから取れたぞー', handler.get_access_token())
+    authenticator.get_access_token()
+    print('結果', authenticator.result())
