@@ -1,15 +1,3 @@
-# https://qiita.com/masakielastic/items/05cd6a36bb6fb10fccf6
-#    httpsサーバ
-# https://qiita.com/kai_kou/items/d03abd6012f32071c1aa
-#    OAuth トークン取得
-# https://qiita.com/miriwo/items/3a19b92dd0c77e6d2378
-#     証明書のせいでchromeでひらけない
-# https://developers-book.com/2020/09/24/302/
-#     自己証明書エラー　verify fale
-# https://booth.pm/ja/items/1296585 
-#    OAuth
-# http://ja.pymotw.com/2/SocketServer/
-#   serve_foreverは無限ループ
 from http.server import HTTPServer
 import ssl
 
@@ -22,53 +10,62 @@ from access_token_request_handler import AccessTokenRequestHandler
 
 class OAuthAuthenticator:
 
-    def __init__(self, client_credential, client_info, authorize_url):
-        # クレデンシャル読み込み
-        self._client_credential = client_credential
-        self._client_info = client_info
-        self._authorize_url = authorize_url
-        self._authorization_result = None
-        self._app_uri = 'https://%s:%s' % (client_info['host'], client_info['port'])
-        # 証明書読み込み
+    def __init__(self, client_credential, client_info, auth_url):
+        self.__client_credential = client_credential
+        self.__client_info = client_info
+        self.__host = client_info['host']
+        self.__port = client_info['port']
+        self.__authenticate_url = urllib.parse.urljoin(auth_url['base'], auth_url['authenticate'])
+        self.__authorize_url = urllib.parse.urljoin(auth_url['base'], auth_url['authorize'])
+        self.__authorization_result = None
+        self.__app_uri = f'https://{self.__host}:{self.__port}'
 
     def get_access_token(self):
-        token = None
-
         params = {
-            'client_id': self._client_credential['id'],
+            'client_id': self.__client_credential['id'],
             'grant_type': 'authorization_code',
-            'redirect_uri': self._app_uri,
+            'redirect_uri': self.__app_uri,
             'response_type': 'code',
             'state': self.__randomname(40)
         }
-        access_url = urllib.parse.urljoin(self._authorize_url, 'authorize')
-        access_url = '?'.join([access_url, urllib.parse.urlencode(params)])
+        access_url = '?'.join([self.__authenticate_url, urllib.parse.urlencode(params)])
 
         # 認可コードリクエスト
-        self.__request_authorization_code(access_url)
+        self.__authenticate(access_url)
 
         # トークンリクエスト
         handler = lambda request, address, server: AccessTokenRequestHandler(
-            request, address, server, self._client_credential, self._app_uri, self._authorize_url
+            request, address, server,
+            self.__client_credential, self.__app_uri,
+            self.__authorize_url
         )
-        with HTTPServer((self._client_info['host'], self._client_info['port']), handler) as server:
-            print('Server Starts - %s:%s' % (self._client_info['host'], self._client_info['port']))
+        with HTTPServer((self.host, self.port), handler) as server:
+            print(f'Server Starts - {self.host}:{self.port}')
             server.socket = self.__wrap_socket_ssl(server.socket)
 
             try:
-                while token is None:
+                while self.__authorization_result is None:
                     server.result = None
                     server.handle_request()
-                    token = server.result
+                    self.__authorization_result = server.result
             except KeyboardInterrupt:
                 pass
 
-        print('Server Stops - %s:%s' % (self._client_info['host'], self._client_info['port']))
+        print(f'Server Stops - {self.host}:{self.port}')
 
+    @property
     def result(self):
-        return self._authorization_result
+        return self.__authorization_result
 
-    def __request_authorization_code(self, access_url):
+    @property
+    def host(self):
+        return self.__host
+
+    @property
+    def port(self):
+        return self.__port
+
+    def __authenticate(self, access_url):
         open_new(access_url)
 
     def __wrap_socket_ssl(self, socket):
