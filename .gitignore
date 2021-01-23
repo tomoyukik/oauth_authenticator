@@ -1,2 +1,4 @@
 __pycache__
 credential.yaml
+*.crt
+*.key
